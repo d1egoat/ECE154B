@@ -20,7 +20,7 @@ localparam    [2:0] instr_addsub_funct3 = 3'b000;
 localparam    [2:0] instr_slt_funct3    = 3'b010;  
 localparam    [2:0] instr_or_funct3     = 3'b110;  
 localparam    [2:0] instr_and_funct3    = 3'b111;  
-localparam    [2:0] instr_jal_funct3    = 3'xxx; // Jump and Link does not have funct3
+localparam    [2:0] instr_jal_funct3    = 3'bxxx; // Jump and Link does not have funct3
 
 // Control unit (instruction Op codes)
 localparam    [6:0] instr_Rtype_op    = 7'b0110011;
