@@ -20,13 +20,12 @@ localparam    [2:0] instr_addsub_funct3 = 3'b000;
 localparam    [2:0] instr_slt_funct3    = 3'b010;  
 localparam    [2:0] instr_or_funct3     = 3'b110;  
 localparam    [2:0] instr_and_funct3    = 3'b111;  
-localparam    [2:0] instr_jal_funct3    = 3'bxxx; // Jump and Link does not have funct3
 
 // Control unit (instruction Op codes)
 localparam    [6:0] instr_Rtype_op    = 7'b0110011;
 localparam    [6:0] instr_lw_op       = 7'b0000011;
 localparam    [6:0] instr_sw_op       = 7'b0100011;
-localparam    [6:0] instr_jal_op      = 7'b1101111; // Jump and Link
+localparam    [6:0] instr_jal_op      = 7'b1101111;
 localparam    [6:0] instr_beq_op      = 7'b1100011;
 localparam    [6:0] instr_ItypeALU_op = 7'b0010011;
 localparam    [6:0] instr_lui_op      = 7'b0110111;
@@ -36,7 +35,6 @@ localparam    [6:0] instr_jalr_op     = 7'b1100111;
 localparam    [1:0] ALUop_mem   = 2'b00;
 localparam    [1:0] ALUop_beq   = 2'b01;
 localparam    [1:0] ALUop_other = 2'b10;
-localparam    [1:0] ALUop_dc   = 2'bxx;
 
 // Extend Unit (ImmSrc codes)
 localparam    [2:0] imm_Itype = 3'b000;
@@ -58,7 +56,6 @@ localparam    [2:0] ALUcontrol_slt = 3'b101;
 localparam    [1:0] forward_ex    = 2'b00;
 localparam    [1:0] forward_wb    = 2'b01;
 localparam    [1:0] forward_mem   = 2'b10;
-
 
 // Mux (Feeding ALU SrcB input) 
 localparam     SrcB_reg  = 1'b0;

@@ -15,7 +15,7 @@ localparam ADDR_WIDTH = $clog2(NUM_WORDS);
 reg [31:0] RAM [0:NUM_WORDS-1];
 
 // initialize memory with test program. Change this with your file for running custom code
-initial $readmemh("text.dat", RAM);
+initial $readmemh("memfile.dat", RAM);
 
 assign rd_o = RAM[a_i[ADDR_WIDTH+1:2]]; // word aligned
 
