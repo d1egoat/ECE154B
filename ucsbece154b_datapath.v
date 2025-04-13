@@ -44,117 +44,101 @@ module ucsbece154b_datapath (
 
 // Pipeline registers
 // Fetch -> Decode
-reg [31:0] PCF, PCPlus4F;
+wire [31:0] PCF, PCPlus4F;
 reg [31:0] InstrD;
 
 // Decode -> Execute
-reg [31:0] PCPlus4D;
-reg [31:0] ImmExtD, ImmExtE;
-reg [31:0] Rd1D, Rd2D;
-reg [4:0] Rs1D, Rs2D, RdD;
+reg [31:0] PCPlus4D, PCD;
+wire [31:0] ImmExtD;
+wire [31:0] Rd1D, Rd2D;
+wire [4:0] RdD;
 
 // Execute -> Memory
-reg [31:0] ALUResultE, WriteDataE, PCPlus4E;
-reg [4:0] RdE;
+reg [31:0] Rd1E, Rd2E, PCE, ImmExtE, PCPlus4E;
+wire [31:0] ALUResultE, WriteDataE, WriteDateE, SrcAE, SrcBE, PCTargetE;
 
 // Memory -> Writeback
-reg [31:0] ALUResultM, ReadDataM, PCPlus4M;
-reg [4:0] RdM;
-reg [31:0] ResultW;
+reg [31:0] ImmExtM, PCPlus4M;
+wire [31:0] FwdSrcM;  // Result for writeback stage
 
-// Internal signals
+/*// Internal signals
 wire [31:0] RD1, RD2;        // Register file outputs
 wire [31:0] SrcAE, SrcBE;    // ALU inputs
-wire [31:0] ImmExt;          // Immediate value
+reg  [31:0] ImmExt;          // Immediate value
 wire [31:0] PCTargetE;
 wire [31:0] PCNextF;
+*/
+// Writeback 
+reg [31:0] ALUResultW, ReadDataW, ImmExtW, PCPlus4W;
+wire [31:0] ResultW;
 
-// Instruction Fetch Stage
-always @(posedge clk or posedge reset) begin
-    if (reset) begin
-        PCF <= pc_start;
-        PCPlus4F <= 0;
-    end else if (!StallF_i) begin
-        PCF <= PCNextF;
-        PCPlus4F <= PCF + 4;
-    end
-end
 
-assign PCNextF = PCSrcE_i ? PCTargetE : PCPlus4F;
-
-// Pipeline Register: Fetch -> Decode
-always @(posedge clk) begin
-    if (FlushD_i) begin
-        InstrD <= 32'h00000013;  // NOP instruction
-        PCPlus4D <= 0;
-    end else if (!StallD_i) begin
-        InstrD <= InstrF_i;
-        PCPlus4D <= PCPlus4F;
-    end
-end
-
-// Decode Stage
-assign op_o = InstrD[6:0];
-assign funct3_o = InstrD[14:12];
-assign funct7b5_o = InstrD[30];
-assign Rs1D_o = InstrD[19:15];
-assign Rs2D_o = InstrD[24:20];
-
-// Immediate Generator
-always @(*) begin
-    case (ImmSrcD_i)
-        imm_Itype: ImmExt = {{20{InstrD[31]}}, InstrD[31:20]};
-        imm_Stype: ImmExt = {{20{InstrD[31]}}, InstrD[31:25], InstrD[11:7]};
-        imm_Btype: ImmExt = {{20{InstrD[31]}}, InstrD[7], InstrD[30:25], InstrD[11:8], 1'b0};
-        imm_Jtype: ImmExt = {{12{InstrD[31]}}, InstrD[19:12], InstrD[20], InstrD[30:21], 1'b0};
-        imm_Utype: ImmExt = {InstrD[31:12], 12'b0};
-        default:   ImmExt = 32'b0;
-    endcase
-end
-
-// Register File
 ucsbece154b_rf rf(
-    .clk(clk),
-    .a1_i(Rs1D),
-    .a2_i(Rs2D),
+    .clk(!clk),
+    .a1_i(Rs1D_o),
+    .a2_i(Rs2D_o),
     .a3_i(RdW_o),
-    .rd1_o(RD1),
-    .rd2_o(RD2),
+    .rd1_o(Rd1D),
+    .rd2_o(Rd2D),
     .we3_i(RegWriteW_i),
     .wd3_i(ResultW)
 );
+// Fetch Stage
+assign PCF = (PCSrcE_i == MuxPC_PCPlus4) ? PCPlus4F : PCTargetE;
+assign PCPlus4F = PCF_o + 4;
 
-// Pipeline Register: Decode -> Execute
-always @(posedge clk) begin
-    if (FlushE_i) begin
-        Rd1D <= 32'b0;
-        Rd2D <= 32'b0;
-        ImmExtD <= 32'b0;
-        Rs1D <= 5'b0;
-        Rs2D <= 5'b0;
-        RdD <= 5'b0;
-        PCPlus4D <= 32'b0;
-    end else begin
-        Rd1D <= RD1;
-        Rd2D <= RD2;
-        ImmExtD <= ImmExt;
-        Rs1D <= InstrD[19:15];
-        Rs2D <= InstrD[24:20];
-        RdD <= InstrD[11:7];
-        PCPlus4D <= PCPlus4D;
-    end
-end
+
+// Decode Stage
+assign funct7b5_o = InstrD[30];
+assign Rs2D_o = InstrD[24:20];
+assign Rs1D_o = InstrD[19:15];
+assign funct3_o = InstrD[14:12];
+assign RdD = InstrD[11:7];
+assign op_o = InstrD[6:0];
+
+
+// Immediate Generator
+assign ImmExtD = 
+    ImmSrcD_i === imm_Itype ? {{20{InstrD[31]}}, InstrD[31:20]} :
+    ImmSrcD_i === imm_Stype ? {{20{InstrD[31]}}, InstrD[31:25], InstrD[11:7]} :
+    ImmSrcD_i === imm_Btype ? {{20{InstrD[31]}}, InstrD[7], InstrD[30:25], InstrD[11:8], 1'b0} :
+    ImmSrcD_i === imm_Jtype ? {{12{InstrD[31]}}, InstrD[19:12], InstrD[20], InstrD[30:21], 1'b0} :
+    ImmSrcD_i === imm_Utype ? {InstrD[31:12], 12'b0} :
+    32'bx
+;
 
 // Execute Stage
-// Forwarding Muxes
-assign SrcAE = ForwardAE_i[1] ? ALUResultM_o :
-              ForwardAE_i[0] ? ResultW :
-              Rd1D;
 
-assign SrcBE = ALUSrcE_i ? ImmExtD :
-              ForwardBE_i[1] ? ALUResultM_o :
-              ForwardBE_i[0] ? ResultW :
-              Rd2D;
+assign SrcAE = 
+    ForwardAE_i === forward_ex  ? Rd1E :
+    ForwardAE_i === forward_wb  ? ResultW :
+    ForwardAE_i === forward_mem ? FwdSrcM :
+    32'bx
+;
+
+assign SrcBE = (ALUSrcE_i === SrcB_reg) ? WriteDataE : ImmExtE;
+
+assign WriteDataE = 
+    ForwardBE_i === forward_ex  ? Rd2E :
+    ForwardBE_i === forward_wb  ? ResultW :
+    ForwardBE_i === forward_mem ? FwdSrcM :
+    32'bx
+;
+
+assign PCTargetE = PCE + ImmExtE;
+
+// Memory Stage
+
+assign FwdSrcM = (ResultSrcM_i === MuxResult_imm) ? ImmExtM : ALUResultM_o;
+
+// Writeback Stage
+assign ResultW = 
+    ResultSrcW_i === MuxResult_aluout  ? ALUResultW :
+    ResultSrcW_i === MuxResult_mem     ? ReadDataW :
+    ResultSrcW_i === MuxResult_PCPlus4 ? PCPlus4W:
+    ResultSrcW_i === MuxResult_imm     ? ImmExtW:
+    32'bx
+;
 
 // ALU
 ucsbece154b_alu alu(
@@ -165,45 +149,100 @@ ucsbece154b_alu alu(
     .zero_o(ZeroE_o)
 );
 
-assign PCTargetE = PCPlus4D + (ImmExtD << 1);
-
-// Pipeline Register: Execute -> Memory
-always @(posedge clk) begin
-    if (FlushE_i) begin
-        ALUResultM_o <= 32'b0;
-        WriteDataM_o <= 32'b0;
-        RdM_o <= 5'b0;
-    end else begin
-        ALUResultM_o <= ALUResultE;
-        WriteDataM_o <= SrcBE;
-        RdM_o <= RdD;
+// Fetch Stage Pipeline Registers
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        PCF_o <= pc_start;
+    end else if (!StallF_i) begin
+        PCF_o <= PCF;
     end
 end
 
-// Memory Stage
-always @(posedge clk) begin
-    ReadDataM <= ReadDataM_i;
+// Decode Stage Pipeline Registers
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        InstrD <= 32'b0;
+        PCD <= 32'b0;
+        PCPlus4D <= 32'b0;
+    end else begin
+        if (FlushD_i) begin
+            InstrD <= 32'b0;
+            PCD <= 32'b0;
+            PCPlus4D <= 32'b0;
+        end else if (!StallD_i) begin
+            InstrD <= InstrF_i;
+            PCD <= PCF_o;
+            PCPlus4D <= PCPlus4F;
+        end
+    end
 end
 
-// Pipeline Register: Memory -> Writeback
-always @(posedge clk) begin
-    ResultW <= ResultSrcM_i[1] ? PCPlus4M :
-              ResultSrcM_i[0] ? ReadDataM :
-              ALUResultM_o;
-    RdW_o <= RdM_o;
+// Execute Stage Pipeline Registers
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        Rd1E <= 32'b0;
+        Rd2E <= 32'b0;
+        Rs1E_o <= 5'b0;
+        Rs2E_o <= 5'b0;
+        RdE_o <= 5'b0;
+        PCE <= 32'b0;
+        PCPlus4E <= 32'b0;
+        ImmExtE <= 32'b0;
+    end else if (FlushE_i) begin
+        Rd1E <= 32'b0;
+        Rd2E <= 32'b0;
+        Rs1E_o <= 5'b0;
+        Rs2E_o <= 5'b0;
+        RdE_o <= 5'b0;
+        PCE <= 32'b0;
+        PCPlus4E <= 32'b0;
+        ImmExtE <= 32'b0;
+    end else begin
+        Rd1E <= Rd1D;
+        Rd2E <= Rd2D;
+        PCE <= PCD;
+        Rs1E_o <= Rs1D_o;
+        Rs2E_o <= Rs2D_o;
+        RdE_o <= RdD;
+        ImmExtE <= ImmExtD;
+        PCPlus4E <= PCPlus4D;
+    end
 end
 
-// Output assignments
-assign PCF_o = PCF;
-assign Rs1E_o = Rs1D;
-assign Rs2E_o = Rs2D;
-assign RdE_o = RdD;
+// Memory Stage Pipeline Registers
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        ALUResultM_o <= 32'b0;
+        WriteDataM_o <= 32'b0;
+        RdM_o <= 5'b0;
+        PCPlus4M <= 32'b0;
+        ImmExtM <= 32'b0;
+    end else begin
+        ALUResultM_o <= ALUResultE;
+        WriteDataM_o <= WriteDataE;
+        RdM_o <= RdE_o;
+        PCPlus4M <= PCPlus4E;
+        ImmExtM <= ImmExtE;
+    end
+end
+
+// Writeback Stage Pipeline Registers
+always @(posedge clk or posedge reset) begin
+    if (reset) begin
+        ReadDataW <= 32'b0;
+        PCPlus4W <= 32'b0;
+        ImmExtW <= 32'b0;
+        RdW_o <= 5'b0;
+        ALUResultW <= 32'b0;
+    end else begin
+        ReadDataW <= ReadDataM_i;
+        PCPlus4W <= PCPlus4M;
+        ImmExtW <= ImmExtM;
+        RdW_o <= RdM_o;
+        ALUResultW <= ALUResultM_o;
+    end
+end
+
 
 endmodule
-
-
-
-
-
-
 
