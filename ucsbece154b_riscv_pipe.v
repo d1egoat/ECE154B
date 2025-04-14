@@ -12,7 +12,12 @@ module ucsbece154b_riscv_pipe (
     output wire         MemWriteM_o,
     output wire  [31:0] ALUResultM_o,
     output wire  [31:0] WriteDataM_o,
-    input        [31:0] ReadDataM_i
+    input        [31:0] ReadDataM_i,
+    output wire  [31:0] InstD_o,       // Decode-stage instruction
+    output wire  [31:0] RD1E_o,        // Execute-stage reg1 data  
+    output wire  [31:0] RD2E_o,        // Execute-stage reg2 data
+    output wire  [31:0] ImmExtE_o,     // Execute-stage immediate
+    output wire  [31:0] ResultW_o      // Writeback result
 );
 
 wire  PCSrcE, StallF, StallD, FlushD, RegWriteW, FlushE, ALUSrcE, ZeroE;
@@ -85,6 +90,11 @@ ucsbece154b_datapath dp (
     .ReadDataM_i(ReadDataM_i),
     .ResultSrcW_i(ResultSrcW),
     .RdW_o(RdW),
-    .ResultSrcM_i (ResultSrcM)
+    .ResultSrcM_i (ResultSrcM),
+    .InstD_o(InstD_o),         // From datapath's decode stage
+    .RD1E_o(RD1E_o),           // From execute stage reg1
+    .RD2E_o(RD2E_o),           // From execute stage reg2
+    .ImmExtE_o(ImmExtE_o),     // Execute-stage immediate
+    .ResultW_o(ResultW_o)      // Writeback result
 );
 endmodule
